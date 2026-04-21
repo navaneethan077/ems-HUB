@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/shared/navbar';
 import { Sidebar } from '@/components/shared/sidebar';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FaFileAlt, FaCalendarAlt, FaCheckCircle, FaTimesCircle, FaClipboardList } from 'react-icons/fa';
 
 export default function LeaveRequestPage() {
   const { user } = useAuth();
@@ -16,6 +17,11 @@ export default function LeaveRequestPage() {
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [leaveRequests, setLeaveRequests] = useState([
+    { id: 1, type: 'Vacation', from: '2024-05-01', to: '2024-05-05', days: 5, status: 'Pending', date: '2024-04-15' },
+    { id: 2, type: 'Sick Leave', from: '2024-04-22', to: '2024-04-23', days: 2, status: 'Approved', date: '2024-04-20' },
+  ]);
 
   useEffect(() => {
     if (user && user.role !== 'employee') {
@@ -23,10 +29,39 @@ export default function LeaveRequestPage() {
     }
   }, [user, router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setIsLoading(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const daysRequested = Math.ceil(
+        (new Date(toDate).getTime() - new Date(fromDate).getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+
+      const newRequest = {
+        id: leaveRequests.length + 1,
+        type: leaveType,
+        from: fromDate,
+        to: toDate,
+        days: daysRequested,
+        status: 'Pending',
+        date: new Date().toISOString().split('T')[0],
+      };
+
+      setLeaveRequests([newRequest, ...leaveRequests]);
+      setSubmitted(true);
+      setFromDate('');
+      setToDate('');
+      setReason('');
+      
+      setTimeout(() => setSubmitted(false), 3000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!user || user.role !== 'employee') {
@@ -36,22 +71,26 @@ export default function LeaveRequestPage() {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar role={user.role} />
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         <Navbar />
-        <main className="p-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Request Leave</h1>
-            <p className="mt-2 text-gray-600">Submit a leave request to your manager</p>
-          </div>
+        <main className="flex-1 overflow-auto p-8">
+          <div className="mx-auto max-w-7xl">
+            <div>
+              <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
+                <FaFileAlt className="text-primary" />
+                Request Leave
+              </h1>
+              <p className="mt-2 text-gray-600">Submit a leave request to your manager</p>
+            </div>
 
           <div className="mt-8 grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>New Leave Request</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
+              <Card className="border border-border p-6">
+                <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
+                  <FaCalendarAlt className="text-primary" />
+                  New Leave Request
+                </h2>
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">
                         Leave Type
@@ -111,33 +150,36 @@ export default function LeaveRequestPage() {
                     </div>
 
                     {submitted && (
-                      <div className="rounded-lg bg-green-50 border border-green-200 p-4">
-                        <p className="text-sm font-medium text-green-800">
-                          Leave request submitted successfully! Your manager will review it soon.
+                      <div className="rounded-lg bg-green-50 border border-accent p-4">
+                        <p className="text-sm font-medium text-accent">
+                          ✓ Leave request submitted successfully! Your manager will review it soon.
                         </p>
                       </div>
                     )}
 
                     <div className="flex gap-4">
-                      <Button variant="primary" size="md" disabled={submitted}>
-                        {submitted ? 'Request Submitted' : 'Submit Request'}
+                      <Button 
+                        type="submit"
+                        disabled={isLoading || submitted} 
+                        className="flex-1 bg-accent hover:bg-accent-light text-white disabled:opacity-50"
+                      >
+                        {isLoading ? 'Submitting...' : submitted ? 'Request Submitted' : 'Submit Request'}
                       </Button>
-                      <Button variant="outline" size="md">
+                      <Button variant="outline" className="flex-1">
                         Cancel
                       </Button>
                     </div>
                   </form>
-                </CardContent>
               </Card>
             </div>
 
             <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leave Balance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+              <Card className="border border-border p-6">
+                <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
+                  <FaClipboardList className="text-primary" />
+                  Leave Balance
+                </h2>
+                <div className="space-y-4">
                     {[
                       { type: 'Vacation', total: 20, used: 8, available: 12 },
                       { type: 'Sick Leave', total: 10, used: 2, available: 8 },
@@ -156,85 +198,84 @@ export default function LeaveRequestPage() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </CardContent>
+                </div>
               </Card>
 
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Important Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <Card className="mt-6 border border-border p-6">
+                <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
+                  📌 Important Notes
+                </h2>
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li>• Requests must be submitted at least 5 days in advance</li>
                     <li>• Approval depends on team availability</li>
                     <li>• Check your balance before requesting</li>
                     <li>• Emergency leave requires manager approval</li>
                   </ul>
-                </CardContent>
               </Card>
             </div>
           </div>
 
           {/* Pending Requests */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Your Leave Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                        Type
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                        Period
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                        Days
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                        Requested
-                      </th>
+          <Card className="mt-8 border border-border p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
+              <FaClipboardList className="text-primary" />
+              Your Leave Requests
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      Type
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      Period
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      Days
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      Requested
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaveRequests.map((request) => (
+                    <tr key={request.id} className="border-b border-border hover:bg-muted">
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        {request.type}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {request.from} to {request.to}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{request.days}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                            request.status === 'Approved'
+                              ? 'bg-accent text-white'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
+                          {request.status === 'Approved' ? (
+                            <FaCheckCircle />
+                          ) : (
+                            <FaClipboardList />
+                          )}
+                          {request.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{request.date}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { type: 'Vacation', from: '2024-05-01', to: '2024-05-05', days: 5, status: 'Pending', date: '2024-04-15' },
-                      { type: 'Sick Leave', from: '2024-04-22', to: '2024-04-23', days: 2, status: 'Approved', date: '2024-04-20' },
-                    ].map((request, idx) => (
-                      <tr key={idx} className="border-b border-border hover:bg-muted">
-                        <td className="px-4 py-3 text-sm font-medium text-foreground">
-                          {request.type}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {request.from} to {request.to}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{request.days}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              request.status === 'Approved'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                          >
-                            {request.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{request.date}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
+          </div>
         </main>
       </div>
     </div>
